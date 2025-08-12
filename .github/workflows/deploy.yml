@@ -1,0 +1,73 @@
+name: Deploy IaC (Terraform)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_VAR_region: "sa-east-1"
+  TF_VAR_project: "devops-it"
+  TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+jobs:
+  plan-and-apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: sa-east-1
+
+      - name: Init (S3 backend, sem lock)
+        run: |
+          cat > backend.hcl <<'HCL'
+          bucket  = "${{ secrets.TF_STATE_BUCKET }}"
+          key     = "${{ secrets.TF_STATE_KEY }}"
+          region  = "sa-east-1"
+          encrypt = true
+          HCL
+          terraform init -backend-config=backend.hcl
+
+      - name: Validate
+        run: terraform validate
+
+      - name: Plan
+        run: terraform plan -out=tfplan
+
+      - name: Upload plan (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: tfplan
+
+      - name: Apply (somente em push na main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve tfplan
+
+      - name: Outputs
+        if: always()
+        run: terraform output -json > tf-outputs.json
+
+      - name: Upload outputs (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-outputs
+          path: tf-outputs.json

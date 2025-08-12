@@ -9,7 +9,7 @@ terraform {
 provider "aws" {
   region = var.region
   default_tags = {
-    Project = "devops-it"
+    Project   = "devops-it"
     ManagedBy = "terraform"
   }
 }

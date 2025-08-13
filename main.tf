@@ -30,15 +30,3 @@ module "db" {
   db_password          = var.db_password
   app_cidr_allow_list  = module.network.app_cidrs_for_db
 }
-
-output "alb_dns_name" {
-  value = module.web.alb_dns_name
-}
-
-output "ec2_public_ip" {
-  value = module.web.ec2_public_ip
-}
-
-output "rds_endpoint" {
-  value = module.db.rds_endpoint
-}

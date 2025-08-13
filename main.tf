@@ -90,7 +90,7 @@ resource "aws_route_table_association" "pub_b" {
 ################
 resource "aws_security_group" "ec2_sg" {
   name        = "${var.project}-ec2"
-  description = "Allow HTTP from ALB and SSH(optional)"
+  description = "Allow HTTP from ALB"
   vpc_id      = aws_vpc.this.id
 
   ingress {
@@ -155,21 +155,49 @@ resource "aws_security_group" "rds_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+################################
+# Buscar a última AL2023 x86_64
+################################
+data "aws_ami" "al2023" {
+  most_recent = true
+  owners      = ["137112412989"] # AWS oficial
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-2023*-x86_64"]
+  }
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+  filter {
+    name   = "root-device-type"
+    values = ["ebs"]
+  }
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+locals {
+  chosen_ami = var.ami_id != "" ? var.ami_id : data.aws_ami.al2023.id
+}
 
 ################
 # EC2 + ALB
 ################
 resource "aws_instance" "app" {
-  ami                         = var.ami_id
+  ami                         = local.chosen_ami
   instance_type               = var.instance_type
   subnet_id                   = aws_subnet.public_a.id
   vpc_security_group_ids      = [aws_security_group.ec2_sg.id]
   associate_public_ip_address = true
 
-####################
-# USER_DATA + NGINX
-####################
-user_data = <<-EOF
+  ####################
+  # USER_DATA + NGINX
+  ####################
+  user_data = <<-EOF
 #!/bin/bash
 set -euxo pipefail
 dnf -y update
@@ -178,8 +206,7 @@ dnf -y install nginx
 # página simples para o health check do ALB
 echo "OK - devops-it" > /usr/share/nginx/html/index.html
 
-systemctl enable nginx
-systemctl restart nginx
+systemctl enable --now nginx
 EOF
 
   tags = {
@@ -205,12 +232,14 @@ resource "aws_lb_target_group" "app" {
   vpc_id   = aws_vpc.this.id
 
   health_check {
-  path                = "/"
-  matcher             = "200-399"
-  interval            = 15
-  timeout             = 6
-  healthy_threshold   = 2
-  unhealthy_threshold = 2
+    path                = "/"
+    protocol            = "HTTP"
+    port                = "traffic-port"
+    matcher             = "200-399"
+    interval            = 15
+    timeout             = 6
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
   }
 }
 

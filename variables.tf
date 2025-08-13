@@ -16,7 +16,7 @@ variable "instance_type" {
 
 variable "ami_id" {
   type    = string
-  default = "ami-02482fe6c7e44373a"
+  default = ""
 }
 
 # RDS

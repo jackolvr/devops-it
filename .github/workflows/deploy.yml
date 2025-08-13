@@ -61,9 +61,9 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: terraform apply -auto-approve tfplan
       
-      - name: Mostrar outputs
-        if: always()
-        run: terraform output -no-color || true
+      # - name: Mostrar outputs
+      #   if: always()
+      #   run: terraform output -no-color || true
       
       - name: Outputs (Gerar artefato)
         if: always()

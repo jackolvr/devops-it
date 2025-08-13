@@ -166,19 +166,44 @@ resource "aws_instance" "app" {
   vpc_security_group_ids      = [aws_security_group.ec2_sg.id]
   associate_public_ip_address = true
 
-  user_data = <<-EOF
-    #!/bin/bash
-    set -e
-    apt-get update -y || yum update -y
-    # instala nginx simples
-    if command -v apt-get >/dev/null; then
-      apt-get install -y nginx
-    else
-      amazon-linux-extras install -y nginx1
-    fi
-    echo "OK - devops-it" > /usr/share/nginx/html/index.html
-    systemctl enable nginx; systemctl start nginx
-  EOF
+####################
+# USER_DATA + NGINX
+####################
+user_data = <<-EOF
+  #!/bin/bash
+  set -euxo pipefail
+
+  # Detecta gerenciador de pacotes
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
+    WEBROOT="/var/www/html"
+  elif command -v dnf >/dev/null 2>&1; then
+    # Amazon Linux 2023
+    dnf -y update
+    dnf -y install nginx
+    WEBROOT="/usr/share/nginx/html"
+  elif command -v yum >/dev/null 2>&1; then
+    # Amazon Linux 2
+    yum -y update
+    amazon-linux-extras enable nginx1 || true
+    yum -y install nginx
+    WEBROOT="/usr/share/nginx/html"
+  else
+    echo "Gerenciador de pacotes não suportado" >&2
+    exit 1
+  fi
+
+  mkdir -p "${WEBROOT}"
+  echo "OK - devops-it" > "${WEBROOT}/index.html"
+
+  systemctl enable nginx
+  systemctl restart nginx
+
+  # Garante que está escutando em 0.0.0.0:80
+  ss -ltn | grep ':80' || (echo "Nginx não está escutando na porta 80" >&2; exit 1)
+EOF
+
 
   tags = {
     Name = "${var.project}-ec2"
@@ -203,7 +228,14 @@ resource "aws_lb_target_group" "app" {
   vpc_id   = aws_vpc.this.id
 
   health_check {
-    path = "/"
+    path                = "/"
+    protocol            = "HTTP"
+    port                = "traffic-port"
+    matcher             = "200-399"
+    interval            = 15
+    timeout             = 6
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
   }
 }
 

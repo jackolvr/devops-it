@@ -170,40 +170,17 @@ resource "aws_instance" "app" {
 # USER_DATA + NGINX
 ####################
 user_data = <<-EOF
-  #!/bin/bash
-  set -euxo pipefail
+#!/bin/bash
+set -euxo pipefail
+dnf -y update
+dnf -y install nginx
 
-  # Detecta gerenciador de pacotes
-  if command -v apt-get >/dev/null 2>&1; then
-    apt-get update -y
-    DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
-    WEBROOT="/var/www/html"
-  elif command -v dnf >/dev/null 2>&1; then
-    # Amazon Linux 2023
-    dnf -y update
-    dnf -y install nginx
-    WEBROOT="/usr/share/nginx/html"
-  elif command -v yum >/dev/null 2>&1; then
-    # Amazon Linux 2
-    yum -y update
-    amazon-linux-extras enable nginx1 || true
-    yum -y install nginx
-    WEBROOT="/usr/share/nginx/html"
-  else
-    echo "Gerenciador de pacotes não suportado" >&2
-    exit 1
-  fi
+# página simples para o health check do ALB
+echo "OK - devops-it" > /usr/share/nginx/html/index.html
 
-  mkdir -p "${WEBROOT}"
-  echo "OK - devops-it" > "${WEBROOT}/index.html"
-
-  systemctl enable nginx
-  systemctl restart nginx
-
-  # Garante que está escutando em 0.0.0.0:80
-  ss -ltn | grep ':80' || (echo "Nginx não está escutando na porta 80" >&2; exit 1)
+systemctl enable nginx
+systemctl restart nginx
 EOF
-
 
   tags = {
     Name = "${var.project}-ec2"
@@ -228,14 +205,12 @@ resource "aws_lb_target_group" "app" {
   vpc_id   = aws_vpc.this.id
 
   health_check {
-    path                = "/"
-    protocol            = "HTTP"
-    port                = "traffic-port"
-    matcher             = "200-399"
-    interval            = 15
-    timeout             = 6
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
+  path                = "/"
+  matcher             = "200-399"
+  interval            = 15
+  timeout             = 6
+  healthy_threshold   = 2
+  unhealthy_threshold = 2
   }
 }
 

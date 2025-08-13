@@ -14,10 +14,13 @@ variable "instance_type" {
   default = "t3.micro"
 }
 
+# AMI
 variable "ami_id" {
-  type    = string
-  default = ""
+  type        = string
+  description = "AMI (se vazio, usa AL2023 mais recente)"
+  default     = ""
 }
+
 
 # RDS
 variable "db_engine" {

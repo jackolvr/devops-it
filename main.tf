@@ -12,21 +12,21 @@ module "web" {
   project           = var.project
   vpc_id            = module.network.vpc_id
   public_subnet_ids = module.network.public_subnet_ids
-  ami_id            = var.ami_id
+  ami_id            = local.chosen_ami
   instance_type     = var.instance_type
   user_data         = file("${path.module}/user_data/al2023_nginx.sh")
 }
 
 module "db" {
-  source               = "./modules/db"
-  project              = var.project
-  vpc_id               = module.network.vpc_id
-  db_subnet_ids        = module.network.private_subnet_ids
-  db_engine            = var.db_engine
-  db_engine_version    = var.db_engine_version
-  db_instance_class    = var.db_instance_class
-  db_name              = var.db_name
-  db_username          = var.db_username
-  db_password          = var.db_password
-  app_cidr_allow_list  = module.network.app_cidrs_for_db
+  source              = "./modules/db"
+  project             = var.project
+  vpc_id              = module.network.vpc_id
+  db_subnet_ids       = module.network.private_subnet_ids
+  db_engine           = var.db_engine
+  db_engine_version   = var.db_engine_version
+  db_instance_class   = var.db_instance_class
+  db_name             = var.db_name
+  db_username         = var.db_username
+  db_password         = var.db_password
+  app_cidr_allow_list = module.network.app_cidrs_for_db
 }

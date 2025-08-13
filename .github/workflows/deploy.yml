@@ -35,7 +35,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: sa-east-1
 
-      - name: Init (S3 backend, sem lock)
+      - name: Init (S3 backend remoto)
         run: |
           cat > backend.hcl <<'HCL'
           bucket  = "${{ secrets.TF_STATE_BUCKET }}"
@@ -51,13 +51,13 @@ jobs:
       - name: Plan
         run: terraform plan -out=tfplan
 
-      - name: Upload plan (artifact)
+      - name: Upload plan (artefato)
         uses: actions/upload-artifact@v4
         with:
           name: tfplan
           path: tfplan
 
-      - name: Apply (somente em push na main)
+      - name: Apply (push na main)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: terraform apply -auto-approve tfplan
 
@@ -65,7 +65,7 @@ jobs:
         if: always()
         run: terraform output -json > tf-outputs.json
 
-      - name: Upload outputs (artifact)
+      - name: Upload outputs (artefato)
         if: always()
         uses: actions/upload-artifact@v4
         with:

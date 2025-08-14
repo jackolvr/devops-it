@@ -15,6 +15,8 @@ module "web" {
   ami_id            = local.chosen_ami
   instance_type     = var.instance_type
   user_data         = file("${path.module}/user_data/al2023_nginx.sh")
+  ssh_key_name      = var.ssh_key_name
+  my_ip_cidr        = var.my_ip_cidr
 }
 
 module "db" {

@@ -21,7 +21,7 @@ resource "aws_security_group" "alb_sg" {
 
 resource "aws_security_group" "ec2_sg" {
   name        = "${var.project}-ec2"
-  description = "Allow HTTP from ALB"
+  description = "Allow HTTP from ALB and SSH from my IP"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -30,6 +30,14 @@ resource "aws_security_group" "ec2_sg" {
     to_port         = 80
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
+  }
+  
+  ingress {
+    description = "SSH from my IP"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.my_ip_cidr]
   }
 
   egress {
@@ -47,6 +55,7 @@ resource "aws_instance" "app" {
   vpc_security_group_ids      = [aws_security_group.ec2_sg.id]
   associate_public_ip_address = true
   user_data                   = var.user_data
+  key_name                    = var.ssh_key_name
 
   tags = {
     Name = "${var.project}-ec2"

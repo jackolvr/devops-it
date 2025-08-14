@@ -8,6 +8,18 @@ variable "project" {
   default = "devops-it"
 }
 
+variable "ssh_key_name" {
+  type        = string
+  description = "Nome da chave SSH na AWS"
+  default     = ""
+}
+
+variable "my_ip_cidr" {
+  type        = string
+  description = "Seu IP público em formato CIDR (ex: 203.0.113.1/32)"
+  default     = "0.0.0.0/0"  # ATENÇÃO: Muito permissivo, use seu IP real!
+}
+
 # EC2
 variable "instance_type" {
   type    = string
